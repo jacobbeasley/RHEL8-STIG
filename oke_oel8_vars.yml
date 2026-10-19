@@ -1,0 +1,121 @@
+---
+# ==============================================================================
+# STIG Overlay Configuration for OEL 8 / Oracle Kubernetes Engine (OKE)
+# Role: jacobbeasley/RHEL8-STIG
+# Mode: Pure Variable Overlay (Option A)
+# ==============================================================================
+
+# General Behavior
+rhel8stig_disruption_high: false
+rhel8stig_skip_reboot: true
+
+# ==============================================================================
+# 1. Routing & Network Forwarding (Kubernetes Pod Networking)
+# ==============================================================================
+
+rhel8stig_system_is_router: true
+rhel8stig_040259: false   # IPv4 packet forwarding
+rhel8stig_040260: false   # IPv6 packet forwarding
+rhel8stig_040284: false   # Preserve user namespaces (max_user_namespaces != 0)
+rhel8stig_040285: false   # Reverse path filtering (rp_filter)
+rhel8stig_040281: false   # BPF syscall access (for eBPF-based CNIs/tooling)
+rhel8stig_040286: false   # BPF JIT compiler hardening
+rhel8stig_040280: false   # IPv6 ICMP redirect handling
+
+# ==============================================================================
+# 2. Application Execution Policy (fapolicyd)
+# ==============================================================================
+
+rhel8stig_040135: false   # Do not install fapolicyd
+rhel8stig_040136: false   # Do not enable fapolicyd
+rhel8stig_040137: false   # Do not apply deny-all execution whitelist
+
+# ==============================================================================
+# 3. Firewall Handling
+# ==============================================================================
+
+rhel8stig_firewall_service: "not_required"
+rhel8stig_start_firewall_service: false
+rhel8stig_040030: false
+rhel8stig_040100: false
+rhel8stig_040101: false
+
+# ==============================================================================
+# 4. Storage, Filesystem & CSI Drivers (NFS, Samba/CIFS, Block Volumes)
+# ==============================================================================
+
+rhel8stig_010580: false   # Do not enforce nodev on non-root partitions
+rhel8stig_010590: false   # Do not enforce noexec on /home
+rhel8stig_040122: false   # Do not enforce noexec on /dev/shm
+rhel8stig_040125: false   # Do not enforce noexec on /tmp
+rhel8stig_040130: false   # Do not enforce nodev on /var/tmp
+rhel8stig_040131: false   # Do not enforce nosuid on /var/tmp
+rhel8stig_040134: false   # Do not enforce noexec on /var/tmp
+
+# NFS & Samba/CIFS mount permissions for Kubernetes CSI drivers:
+# Allows binaries, scripts, and devices to run on remote CSI-mounted volumes.
+rhel8stig_010630: false   # Do not enforce noexec on NFS/network-mounted file systems
+rhel8stig_010640: false   # Do not enforce nodev on NFS/network-mounted file systems
+rhel8stig_010650: false   # Do not enforce nosuid on NFS/network-mounted file systems
+
+# ==============================================================================
+# 5. Cloud-Init, User Data & Sudo Escalation (opc user bootstrap)
+# ==============================================================================
+
+rhel8stig_sudoers_exclude_nopasswd_list:
+  - rocky
+  - ec2-user
+  - opc
+
+rhel8stig_010380: false   # Require password for sudo
+rhel8stig_010381: false   # Reauthentication on sudo
+rhel8stig_010382: false   # Strip unrestricted ALL from sudoers
+rhel8stig_010383: false   # Use invoking user's password for sudo
+rhel8stig_010384: false   # Reauthentication timeout
+rhel8stig_010385: false   # Sudo password bypass prohibition
+rhel8stig_010121: false   # Lock accounts without passwords
+rhel8stig_020330: false   # Lock accounts configured with blank or null passwords
+rhel8stig_020260: false   # Disable accounts after 35 days inactivity
+rhel8stig_010140: false   # UEFI bootloader authentication
+rhel8stig_010141: false   # UEFI bootloader superuser check
+rhel8stig_010149: false   # BIOS bootloader superuser check
+rhel8stig_010150: false   # BIOS bootloader password
+rhel8stig_010151: false
+rhel8stig_010152: false
+
+# Umask: relaxed from 077 to 027 to ensure non-root processes and daemonsets
+# can read certificates, CNI configs, and metadata created during bootstrap.
+rhel8stig_login_defaults_umask: "027"
+rhel8stig_020352: false   # Do not enforce 077 umask for interactive accounts
+rhel8stig_020353: false   # Do not enforce 077 umask in logon/non-logon shells
+
+# ==============================================================================
+# 6. Name Resolution & Time Synchronization in OCI
+# ==============================================================================
+
+rhel8stig_010680: false   # Preserve dynamic resolv.conf from OCI DHCP
+rhel8stig_use_resolv_template: false
+
+# OCI internal NTP link-local server required for private subnets & TLS validation
+rhel8stig_ntp_server_name: "169.254.169.123"
+
+# ==============================================================================
+# 7. Audit Subsystem Performance
+# ==============================================================================
+
+rhel8stig_availability_override: true
+rhel8stig_auditd_disk_error_action: SYSLOG
+rhel8stig_auditd_disk_full_action: SYSLOG
+rhel8stig_030300: false   # Do not audit mount executions (avoids log flood)
+rhel8stig_030301: false   # Do not audit umount executions
+rhel8stig_030302: false   # Do not audit mount syscalls
+
+# ==============================================================================
+# 8. Cryptographic Policies & File Integrity Monitoring (AIDE)
+# ==============================================================================
+
+rhel8stig_010020: false   # Disable FIPS 140-3 mode enforcement
+rhel8stig_010270: false   # Disable crypto-policies override check
+rhel8stig_010359: false   # AIDE database generation
+rhel8stig_010360: false
+rhel8stig_030650: false

@@ -178,6 +178,42 @@ default                    : ok=270  changed=23   unreachable=0    failed=0    s
 
 This role is designed that the end user should not have to edit the tasks themselves. All customizing should be done via the defaults/main/main.yml file or with extra vars within the project, job, workflow, etc.
 
+### Oracle Kubernetes Engine (OKE) & Kubernetes Profile
+
+When configuring Oracle Enterprise Linux 8 (OEL 8) custom images for use as worker nodes in Oracle Kubernetes Engine (OKE) or Kubernetes clusters, specific STIG controls must be relaxed or disabled to support container runtimes (`containerd`, `crio`), pod networking (CNI), dynamic DNS resolution, and cloud-init instance bootstrapping.
+
+A dedicated standalone variable overlay file is provided at `oke_oel8_vars.yml` (as well as `vars/oke_kubernetes.yml`).
+
+#### Using the OKE / Kubernetes Profile (Pure Variable Overlay)
+
+You can pass the variable overlay at runtime via `-e @oke_oel8_vars.yml` (e.g. inside an automated Packer or Image-Builder pipeline) without modifying the role tasks:
+
+```bash
+ansible-playbook -i inventory site.yml -e "@oke_oel8_vars.yml"
+```
+
+Or include the profile in your Ansible playbook:
+
+```yaml
+- hosts: all
+  become: true
+  vars_files:
+    - oke_oel8_vars.yml
+  roles:
+    - role: RHEL8-STIG
+```
+
+#### Key Controls Relaxed in `oke_oel8_vars.yml`
+
+- **Networking & Routing:** Sets `rhel8stig_system_is_router: true` to permit pod packet forwarding (`net.ipv4/ipv6.conf.all.forwarding = 1`), disables strict reverse path filtering (`rhel8stig_040285: false`) for asymmetric CNI overlay traffic, enables user namespaces (`rhel8stig_040284: false`), and relaxes BPF syscall restrictions (`rhel8stig_040281: false`) for eBPF CNIs (Cilium/Falco).
+- **Application Allowlisting (`fapolicyd`):** Disables `fapolicyd` installation and enforcement (`rhel8stig_040135`, `040136`, `040137: false`) to avoid terminating container runtime processes, runc hooks, and dynamic binaries.
+- **Firewall:** Sets `rhel8stig_firewall_service: not_required` to allow OCI VCN Security Lists and Network Security Groups to manage traffic isolation without dropping kubelet (10250), kube-proxy, or NodePort traffic.
+- **Filesystem Mounts & CSI Drivers:** Disables `nodev` on non-root partitions (`rhel8stig_010580: false`) to permit character devices inside container namespaces (`/var/lib/containerd`), preserves execution permissions on `/tmp` and `/var/tmp` (`rhel8stig_040125`, `040134: false`), and relaxes `noexec`, `nodev`, and `nosuid` on remote network file systems (`rhel8stig_010630`, `010640`, `010650: false`) to support NFS and Samba/CIFS CSI volume drivers.
+- **Identity & Cloud-Init:** Preserves passwordless sudo for the `opc` administrative cloud user (`rhel8stig_sudoers_exclude_nopasswd_list`), disables re-authentication prompts (`rhel8stig_010381: false`), prevents locking SSH-key-only accounts (`rhel8stig_010121`, `020330: false`), relaxes umask to `027` (`rhel8stig_login_defaults_umask`, `rhel8stig_020352`, `020353: false`) so non-root processes and daemonsets can read bootstrap configs, and disables bootloader passwords (`rhel8stig_010140`, `010150: false`) for cloud VM lifecycles.
+- **Dynamic DNS & Time Sync:** Disables static resolver enforcement and file immutable flags (`rhel8stig_010680: false`) so OCI DHCP can configure resolver endpoints for the OCI Metadata Service and Kubernetes API, and sets `rhel8stig_ntp_server_name: "169.254.169.123"` to sync with OCI link-local time servers.
+- **Audit & Performance:** Sets `rhel8stig_availability_override: true` and configures syslog actions for audit disk warnings to prevent node kernel panics during high container syscall activity.
+- **Cryptographic Policies:** Leaves FIPS mode enforcement disabled (`rhel8stig_010020: false`) unless all cluster binaries and container images are certified for FIPS operation.
+
 ## Tags
 
 There are many tags available for added control precision. Each control has its own set of tags noting what level, what OS element it relates to, whether it's a patch or audit, and the rule number. Additionally, NIST references follow a specific conversion format for consistency and clarity.
