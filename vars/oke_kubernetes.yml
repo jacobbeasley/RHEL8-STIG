@@ -74,7 +74,7 @@ rhel8stig_040100: false
 rhel8stig_040101: false
 
 # ==============================================================================
-# 4. Storage & Filesystem Mount Options
+# 4. Storage & Filesystem Mount Options (CSI, NFS, Samba/CIFS, Block Volumes)
 # ==============================================================================
 
 # RHEL-08-010580: Enforce nodev on non-root local partitions
@@ -87,6 +87,12 @@ rhel8stig_040125: false
 rhel8stig_040130: false
 rhel8stig_040131: false
 rhel8stig_040134: false
+
+# NFS & Samba/CIFS mount permissions for Kubernetes CSI drivers:
+# Allows binaries, scripts, and devices to run on remote CSI-mounted volumes.
+rhel8stig_010630: false   # Do not enforce noexec on NFS/network-mounted file systems
+rhel8stig_010640: false   # Do not enforce nodev on NFS/network-mounted file systems
+rhel8stig_010650: false   # Do not enforce nosuid on NFS/network-mounted file systems
 
 # ==============================================================================
 # 5. Identity, Access, and Node Bootstrapping
@@ -136,8 +142,14 @@ rhel8stig_010149: false
 rhel8stig_010151: false
 rhel8stig_010152: false
 
+# Umask: relaxed from 077 to 027 to ensure non-root processes and daemonsets
+# can read certificates, CNI configs, and metadata created during bootstrap.
+rhel8stig_login_defaults_umask: "027"
+rhel8stig_020352: false   # Do not enforce 077 umask for interactive accounts
+rhel8stig_020353: false   # Do not enforce 077 umask in logon/non-logon shells
+
 # ==============================================================================
-# 6. Name Resolution & Cloud Metadata
+# 6. Name Resolution & Time Synchronization in OCI
 # ==============================================================================
 
 # RHEL-08-010680: Enforce static DNS resolver entries or set immutable flag (chattr +i)
@@ -145,6 +157,9 @@ rhel8stig_010152: false
 # OCI Metadata Service (169.254.169.254) and regional Kubernetes API endpoints.
 rhel8stig_010680: false
 rhel8stig_use_resolv_template: false
+
+# OCI internal NTP link-local server required for private subnets & TLS validation
+rhel8stig_ntp_server_name: "169.254.169.123"
 
 # ==============================================================================
 # 7. Audit Subsystem Performance
