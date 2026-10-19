@@ -1,0 +1,52 @@
+---
+# ==============================================================================
+# STIG Overlay Configuration for OEL 8 / Oracle Kubernetes Engine (OKE)
+# Role: jacobbeasley/RHEL8-STIG
+# Mode: Pure Variable Overlay (Option A)
+# ==============================================================================
+
+# General Behavior
+rhel8stig_disruption_high: false
+rhel8stig_skip_reboot: true
+
+# 1. Routing & Network Forwarding (Kubernetes Pod Networking)
+rhel8stig_system_is_router: true
+rhel8stig_040259: false   # IPv4 packet forwarding
+rhel8stig_040260: false   # IPv6 packet forwarding
+rhel8stig_040284: false   # Preserve user namespaces (max_user_namespaces != 0)
+rhel8stig_040285: false   # Reverse path filtering (rp_filter)
+rhel8stig_040281: false   # BPF syscall access (for eBPF-based CNIs/tooling)
+
+# 2. Application Execution Policy (fapolicyd)
+rhel8stig_040135: false   # Do not install fapolicyd
+rhel8stig_040136: false   # Do not enable fapolicyd
+rhel8stig_040137: false   # Do not apply deny-all execution whitelist
+
+# 3. Firewall Handling
+rhel8stig_firewall_service: "not_required"
+rhel8stig_start_firewall_service: false
+
+# 4. Storage & Partition Mount Flags
+rhel8stig_010580: false   # Do not enforce nodev on non-root partitions
+rhel8stig_010590: false   # Do not enforce noexec on /home
+rhel8stig_040122: false   # Do not enforce noexec on /dev/shm
+
+# 5. Cloud-Init, User Data & Sudo Escalation (opc user bootstrap)
+rhel8stig_010380: false   # Require password for sudo
+rhel8stig_010381: false   # Reauthentication on sudo
+rhel8stig_010382: false   # Strip unrestricted ALL from sudoers
+rhel8stig_010383: false   # Use invoking user's password for sudo
+rhel8stig_010384: false   # Reauthentication timeout
+rhel8stig_010385: false   # Sudo password bypass prohibition
+rhel8stig_010121: false   # Lock accounts without passwords
+rhel8stig_010140: false   # UEFI bootloader authentication
+rhel8stig_010141: false   # UEFI bootloader superuser check
+rhel8stig_010149: false   # BIOS bootloader superuser check
+rhel8stig_010150: false   # BIOS bootloader password
+
+# 6. Name Resolution & NetworkManager
+rhel8stig_010680: false   # Preserve dynamic resolv.conf from DHCP
+rhel8stig_use_resolv_template: false
+
+# 7. Cryptographic Mode
+rhel8stig_010020: false   # Disable FIPS 140-3 mode enforcement

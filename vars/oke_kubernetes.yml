@@ -13,6 +13,10 @@
 #   Or pass to ansible-playbook:
 #     ansible-playbook site.yml -e "@vars/oke_kubernetes.yml"
 
+# General Behavior
+rhel8stig_disruption_high: false
+rhel8stig_skip_reboot: true
+
 # ==============================================================================
 # 1. Network & Kernel Configuration
 # ==============================================================================
@@ -21,6 +25,8 @@
 # Setting to true skips RHEL-08-040259 and RHEL-08-040260 (which otherwise set
 # net.ipv4/ipv6.conf.all.forwarding = 0).
 rhel8stig_system_is_router: true
+rhel8stig_040259: false
+rhel8stig_040260: false
 
 # RHEL-08-040285: net.ipv4.conf.all.rp_filter = 1 (strict reverse path filtering)
 # Strict mode breaks asymmetric pod traffic, secondary VNICs, and overlay networks.
@@ -61,7 +67,8 @@ rhel8stig_040137: false
 # OCI Network Security Groups and VCN Security Lists isolate network traffic.
 # Disabling local firewalld management avoids dropping pod/service CIDR traffic,
 # kubelet (10250), kube-proxy, NodePort (30000-32767), and overlay network packets.
-rhel8stig_firewall_service: not_required
+rhel8stig_firewall_service: "not_required"
+rhel8stig_start_firewall_service: false
 rhel8stig_040030: false
 rhel8stig_040100: false
 rhel8stig_040101: false
@@ -74,12 +81,11 @@ rhel8stig_040101: false
 # Containers require character/block devices (/dev/null, /dev/zero, /dev/net/tun)
 # mounted inside container rootfs on /var/lib/containerd and /var/lib/kubelet.
 rhel8stig_010580: false
-
-# RHEL-08-040125: Mount /tmp with noexec
-# Container runtimes, CNI binary extractors, and cloud-init require binary execution.
+rhel8stig_010590: false
+rhel8stig_040122: false
 rhel8stig_040125: false
-
-# RHEL-08-040134: Mount /var/tmp with noexec
+rhel8stig_040130: false
+rhel8stig_040131: false
 rhel8stig_040134: false
 
 # ==============================================================================
@@ -92,6 +98,9 @@ rhel8stig_sudoers_exclude_nopasswd_list:
   - rocky
   - ec2-user
   - opc
+
+# RHEL-08-010380: Require password for sudo
+rhel8stig_010380: false
 
 # RHEL-08-010381: Require password reauthentication for privilege escalation
 rhel8stig_010381: false
@@ -135,6 +144,7 @@ rhel8stig_010152: false
 # OKE worker nodes require dynamic nameserver assignment from OCI DHCP to resolve
 # OCI Metadata Service (169.254.169.254) and regional Kubernetes API endpoints.
 rhel8stig_010680: false
+rhel8stig_use_resolv_template: false
 
 # ==============================================================================
 # 7. Audit Subsystem Performance

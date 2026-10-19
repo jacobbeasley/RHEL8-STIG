@@ -182,28 +182,28 @@ This role is designed that the end user should not have to edit the tasks themse
 
 When configuring Oracle Enterprise Linux 8 (OEL 8) custom images for use as worker nodes in Oracle Kubernetes Engine (OKE) or Kubernetes clusters, specific STIG controls must be relaxed or disabled to support container runtimes (`containerd`, `crio`), pod networking (CNI), dynamic DNS resolution, and cloud-init instance bootstrapping.
 
-A dedicated profile variable file is provided at `vars/oke_kubernetes.yml`.
+A dedicated standalone variable overlay file is provided at `oke_oel8_vars.yml` (as well as `vars/oke_kubernetes.yml`).
 
-#### Using the OKE / Kubernetes Profile
+#### Using the OKE / Kubernetes Profile (Pure Variable Overlay)
 
-You can include the profile variable file in your Ansible playbook:
+You can pass the variable overlay at runtime via `-e @oke_oel8_vars.yml` (e.g. inside an automated Packer or Image-Builder pipeline) without modifying the role tasks:
+
+```bash
+ansible-playbook -i inventory site.yml -e "@oke_oel8_vars.yml"
+```
+
+Or include the profile in your Ansible playbook:
 
 ```yaml
 - hosts: all
   become: true
   vars_files:
-    - vars/oke_kubernetes.yml
+    - oke_oel8_vars.yml
   roles:
     - role: RHEL8-STIG
 ```
 
-Or pass it as extra vars via the command line or Packer image builder provisioner:
-
-```bash
-ansible-playbook -i inventory site.yml -e "@vars/oke_kubernetes.yml"
-```
-
-#### Key Controls Relaxed in `vars/oke_kubernetes.yml`
+#### Key Controls Relaxed in `oke_oel8_vars.yml`
 
 - **Networking & Routing:** Sets `rhel8stig_system_is_router: true` to permit pod packet forwarding (`net.ipv4/ipv6.conf.all.forwarding = 1`), disables strict reverse path filtering (`rhel8stig_040285: false`) for asymmetric CNI overlay traffic, enables user namespaces (`rhel8stig_040284: false`), and relaxes BPF syscall restrictions (`rhel8stig_040281: false`) for eBPF CNIs (Cilium/Falco).
 - **Application Allowlisting (`fapolicyd`):** Disables `fapolicyd` installation and enforcement (`rhel8stig_040135`, `040136`, `040137: false`) to avoid terminating container runtime processes, runc hooks, and dynamic binaries.
