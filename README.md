@@ -178,6 +178,42 @@ default                    : ok=270  changed=23   unreachable=0    failed=0    s
 
 This role is designed that the end user should not have to edit the tasks themselves. All customizing should be done via the defaults/main/main.yml file or with extra vars within the project, job, workflow, etc.
 
+### Oracle Kubernetes Engine (OKE) & Kubernetes Profile
+
+When configuring Oracle Enterprise Linux 8 (OEL 8) custom images for use as worker nodes in Oracle Kubernetes Engine (OKE) or Kubernetes clusters, specific STIG controls must be relaxed or disabled to support container runtimes (`containerd`, `crio`), pod networking (CNI), dynamic DNS resolution, and cloud-init instance bootstrapping.
+
+A dedicated profile variable file is provided at `vars/oke_kubernetes.yml`.
+
+#### Using the OKE / Kubernetes Profile
+
+You can include the profile variable file in your Ansible playbook:
+
+```yaml
+- hosts: all
+  become: true
+  vars_files:
+    - vars/oke_kubernetes.yml
+  roles:
+    - role: RHEL8-STIG
+```
+
+Or pass it as extra vars via the command line or Packer image builder provisioner:
+
+```bash
+ansible-playbook -i inventory site.yml -e "@vars/oke_kubernetes.yml"
+```
+
+#### Key Controls Relaxed in `vars/oke_kubernetes.yml`
+
+- **Networking & Routing:** Sets `rhel8stig_system_is_router: true` to permit pod packet forwarding (`net.ipv4/ipv6.conf.all.forwarding = 1`), disables strict reverse path filtering (`rhel8stig_040285: false`) for asymmetric CNI overlay traffic, enables user namespaces (`rhel8stig_040284: false`), and relaxes BPF syscall restrictions (`rhel8stig_040281: false`) for eBPF CNIs (Cilium/Falco).
+- **Application Allowlisting (`fapolicyd`):** Disables `fapolicyd` installation and enforcement (`rhel8stig_040135`, `040136`, `040137: false`) to avoid terminating container runtime processes, runc hooks, and dynamic binaries.
+- **Firewall:** Sets `rhel8stig_firewall_service: not_required` to allow OCI VCN Security Lists and Network Security Groups to manage traffic isolation without dropping kubelet (10250), kube-proxy, or NodePort traffic.
+- **Filesystem Mounts:** Disables `nodev` on non-root partitions (`rhel8stig_010580: false`) to permit character devices inside container namespaces (`/var/lib/containerd`), and preserves execution permissions on `/tmp` and `/var/tmp` (`rhel8stig_040125`, `040134: false`).
+- **Identity & Cloud-Init:** Preserves passwordless sudo for the `opc` administrative cloud user (`rhel8stig_sudoers_exclude_nopasswd_list`), disables re-authentication prompts (`rhel8stig_010381: false`), prevents locking SSH-key-only accounts (`rhel8stig_010121`, `020330: false`), and disables bootloader passwords (`rhel8stig_010140`, `010150: false`) for cloud VM lifecycles.
+- **Dynamic DNS:** Disables static resolver enforcement and file immutable flags (`rhel8stig_010680: false`) so OCI DHCP can configure resolver endpoints for the OCI Metadata Service and Kubernetes API.
+- **Audit & Performance:** Sets `rhel8stig_availability_override: true` and configures syslog actions for audit disk warnings to prevent node kernel panics during high container syscall activity.
+- **Cryptographic Policies:** Leaves FIPS mode enforcement disabled (`rhel8stig_010020: false`) unless all cluster binaries and container images are certified for FIPS operation.
+
 ## Tags
 
 There are many tags available for added control precision. Each control has its own set of tags noting what level, what OS element it relates to, whether it's a patch or audit, and the rule number. Additionally, NIST references follow a specific conversion format for consistency and clarity.

@@ -1,0 +1,170 @@
+---
+
+# Oracle Kubernetes Engine (OKE) & Kubernetes Custom Image Profile
+#
+# Variable overrides and STIG control relaxations designed for building
+# Oracle Enterprise Linux 8 (OEL 8) custom images for use with Oracle
+# Kubernetes Engine (OKE) or Kubernetes worker nodes.
+#
+# Usage:
+#   Include this file in your playbook:
+#     vars_files:
+#       - vars/oke_kubernetes.yml
+#   Or pass to ansible-playbook:
+#     ansible-playbook site.yml -e "@vars/oke_kubernetes.yml"
+
+# ==============================================================================
+# 1. Network & Kernel Configuration
+# ==============================================================================
+
+# System router mode: enables pod packet forwarding and routing
+# Setting to true skips RHEL-08-040259 and RHEL-08-040260 (which otherwise set
+# net.ipv4/ipv6.conf.all.forwarding = 0).
+rhel8stig_system_is_router: true
+
+# RHEL-08-040285: net.ipv4.conf.all.rp_filter = 1 (strict reverse path filtering)
+# Strict mode breaks asymmetric pod traffic, secondary VNICs, and overlay networks.
+rhel8stig_040285: false
+
+# RHEL-08-040284: user.max_user_namespaces = 0
+# Containers and unprivileged pod sandboxes require user namespaces.
+rhel8stig_040284: false
+
+# RHEL-08-040281: kernel.unprivileged_bpf_disabled = 1
+# Evaluated and relaxed for BPF-based CNIs (Cilium) and observability tooling (Falco).
+rhel8stig_040281: false
+
+# RHEL-08-040286: net.core.bpf_jit_harden = 2
+# Relaxed if eBPF JIT compiler hardening interferes with CNI eBPF programs.
+rhel8stig_040286: false
+
+# RHEL-08-040280: net.ipv6.conf.all.accept_redirects = 0
+# Relaxed when container networking interfaces handle ICMP redirect routing.
+rhel8stig_040280: false
+
+# ==============================================================================
+# 2. Application Allowlisting (fapolicyd)
+# ==============================================================================
+
+# RHEL-08-040135: Install fapolicyd package
+# RHEL-08-040136: Enable fapolicyd service
+# RHEL-08-040137: Enforce deny-all, permit-by-exception policy
+# fapolicyd terminates dynamic container execution (containerd, runc hooks, CNI binaries).
+rhel8stig_040135: false
+rhel8stig_040136: false
+rhel8stig_040137: false
+
+# ==============================================================================
+# 3. Firewall & Traffic Routing
+# ==============================================================================
+
+# OCI Network Security Groups and VCN Security Lists isolate network traffic.
+# Disabling local firewalld management avoids dropping pod/service CIDR traffic,
+# kubelet (10250), kube-proxy, NodePort (30000-32767), and overlay network packets.
+rhel8stig_firewall_service: not_required
+rhel8stig_040030: false
+rhel8stig_040100: false
+rhel8stig_040101: false
+
+# ==============================================================================
+# 4. Storage & Filesystem Mount Options
+# ==============================================================================
+
+# RHEL-08-010580: Enforce nodev on non-root local partitions
+# Containers require character/block devices (/dev/null, /dev/zero, /dev/net/tun)
+# mounted inside container rootfs on /var/lib/containerd and /var/lib/kubelet.
+rhel8stig_010580: false
+
+# RHEL-08-040125: Mount /tmp with noexec
+# Container runtimes, CNI binary extractors, and cloud-init require binary execution.
+rhel8stig_040125: false
+
+# RHEL-08-040134: Mount /var/tmp with noexec
+rhel8stig_040134: false
+
+# ==============================================================================
+# 5. Identity, Access, and Node Bootstrapping
+# ==============================================================================
+
+# Preserve passwordless sudo for cloud administrative users ('opc' on Oracle Linux).
+# Cloud-init relies on passwordless sudo to bootstrap OKE node agents and cluster join.
+rhel8stig_sudoers_exclude_nopasswd_list:
+  - rocky
+  - ec2-user
+  - opc
+
+# RHEL-08-010381: Require password reauthentication for privilege escalation
+rhel8stig_010381: false
+
+# RHEL-08-010382: Restrict privilege elevation in sudoers (removes ALL entries)
+rhel8stig_010382: false
+
+# RHEL-08-010383: Force targetpw/rootpw/runaspw password prompts
+rhel8stig_010383: false
+
+# RHEL-08-010384: Require re-authentication timeout for sudo
+rhel8stig_010384: false
+
+# RHEL-08-010385: Do not allow bypassing password requirements for sudo
+rhel8stig_010385: false
+
+# RHEL-08-010121 & RHEL-08-020330: Lock accounts with blank/null passwords.
+# Cloud VMs often provision initial administrative users (e.g., opc) with SSH keys only
+# and locked/empty passwords. Enforcing lockouts disrupts instance SSH access.
+rhel8stig_010121: false
+rhel8stig_020330: false
+
+# RHEL-08-020260: Disable account identifiers after 35 days of inactivity
+rhel8stig_020260: false
+
+# Bootloader password & authentication:
+# RHEL-08-010140 (UEFI), RHEL-08-010150 (BIOS), RHEL-08-010141 (UEFI user), RHEL-08-010149 (BIOS user)
+# Bootloader authentication interferes with cloud VM lifecycles and hypervisor reboots.
+rhel8stig_010140: false
+rhel8stig_010150: false
+rhel8stig_010141: false
+rhel8stig_010149: false
+rhel8stig_010151: false
+rhel8stig_010152: false
+
+# ==============================================================================
+# 6. Name Resolution & Cloud Metadata
+# ==============================================================================
+
+# RHEL-08-010680: Enforce static DNS resolver entries or set immutable flag (chattr +i)
+# OKE worker nodes require dynamic nameserver assignment from OCI DHCP to resolve
+# OCI Metadata Service (169.254.169.254) and regional Kubernetes API endpoints.
+rhel8stig_010680: false
+
+# ==============================================================================
+# 7. Audit Subsystem Performance
+# ==============================================================================
+
+# Override audit failure flag from 2 (halt/kernel panic) to 1 (warn and continue).
+# Prevents node failure under high-frequency container syscall activity.
+rhel8stig_availability_override: true
+
+# Audit actions on disk error / full: use SYSLOG instead of HALT
+rhel8stig_auditd_disk_error_action: SYSLOG
+rhel8stig_auditd_disk_full_action: SYSLOG
+
+# Filter high-frequency container mount/unmount syscall auditing to avoid disk exhaustion
+rhel8stig_030300: false
+rhel8stig_030301: false
+rhel8stig_030302: false
+
+# ==============================================================================
+# 8. Cryptographic Policies & File Integrity Monitoring (AIDE)
+# ==============================================================================
+
+# RHEL-08-010020: Enforce systemwide FIPS 140 cryptographic mode
+# Should remain disabled unless all Kubernetes binaries, container images, and CNI
+# plugins are FIPS-certified.
+rhel8stig_010020: false
+rhel8stig_010270: false
+
+# AIDE: Disable initial database generation during image build if deferred to runtime,
+# or avoid integrity alert overhead on volatile container filesystem directories.
+rhel8stig_010359: false
+rhel8stig_010360: false
+rhel8stig_030650: false
